@@ -2,11 +2,12 @@
 
 import wx
 from wx.lib.floatcanvas import NavCanvas, FloatCanvas  
+import re
+
 class FigFrame(wx.Frame):
     """create a color frame, inherits from wx.Frame"""
     PhotoMaxSize=800
-    NewW = 0
-    NewH = 0
+
     def __init__(self, parent):
         # -1 is the default ID
         wx.Frame.__init__(self, parent, -1, "LeftClick set Min, RightClick set Max",
@@ -32,9 +33,9 @@ class FigFrame(wx.Frame):
         self.bmp = wx.StaticBitmap(self.panel,0,self.img.ConvertToBitmap())   
         self.bmp.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
         self.SetSize((self.NewW,self.NewH))
-        self.panel.Refresh()
+        #self.panel.Refresh()
              
-        # hook some mouse events
+        # bind some mouse events
         self.bmp.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
         self.bmp.Bind(wx.EVT_RIGHT_DOWN, self.OnRightDown)
     
@@ -48,11 +49,56 @@ class FigFrame(wx.Frame):
             self.SetTitle('LeftMouse. Read Data: ' + str(pt[0])+',' +str(self.NewH-pt[1]))
             xout,yout = self.calculate(pt[0],(self.NewH-pt[1]))
             self.parent.txtctrlPnt.write('['+str(xout)+','+str(yout)+'],\n')
+            
+            self.bmpmap = wx.BitmapFromImage(self.img) # get a bmpmap
+            self.dc = wx.MemoryDC() # create a dc
+            self.dc.SelectObject(self.bmpmap) # select the object
+            self.dc.SetPen(wx.Pen(wx.RED, 3))
+            
+            self.dc.DrawLines(((self.xLimMin,self.yLimMin),(self.xLimMin,self.yLimMin-200),(self.xLimMin,self.yLimMin),(self.xLimMin+200,self.yLimMin))) # draw lines
+            self.dc.DrawLines(((self.xLimMax,self.yLimMax),(self.xLimMax,self.yLimMax+200),(self.xLimMax,self.yLimMax),(self.xLimMax-200,self.yLimMax))) # draw lines
+            
+            self.datax = []
+            self.datay = []
+            self.datalines = self.parent.txtctrlPnt.GetNumberOfLines()
+            for i in range(self.datalines-1): #-1 since there is a line in the end with nothing
+                self.strtmp = self.parent.txtctrlPnt.GetLineText(i)
+                self.strsplit = re.split(r'\[|\]|,',str(self.strtmp)) # split the str and save to 2 arrays
+                self.datax.append(self.strsplit[1])
+                self.datay.append(self.strsplit[2])
+
+            for i in range(len(self.datax)):
+                self.xpix, self.ypix = self.contercalculate(float(self.datax[i]),float(self.datay[i]))
+                self.dc.DrawCircle(self.xpix,self.NewH-self.ypix,5) # draw a circle
+            self.dc.SelectObject(wx.NullBitmap) # release the bmpmap
+            self.bmp = wx.StaticBitmap(self.panel,0,self.bmpmap) #send to the bmp
+            self.bmp.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
+            
+            
         elif self.parent.rdbtmlim.GetValue()==True:
             print 'original coordinate: '+str(pt)
             self.SetTitle('LeftMouse. Set Lim: ' + str(pt[0])+',' +str(self.NewH-pt[1]))
             self.parent.labelgetxmin.SetValue(str(pt[0]))
-            self.parent.labelgetymin.SetValue(str(self.NewH-pt[1]))           
+            self.parent.labelgetymin.SetValue(str(self.NewH-pt[1]))
+            
+            self.bmpmap = wx.BitmapFromImage(self.img) # get a bmpmap
+            self.dc = wx.MemoryDC() # create a dc
+            self.dc.SelectObject(self.bmpmap) # select the object
+            self.dc.SetPen(wx.Pen(wx.RED, 3))
+            self.xLimMin = pt[0]
+            self.yLimMin = pt[1]
+            try:
+                self.xLimMax
+                self.yLimMax
+                self.dc.DrawLines(((self.xLimMin,self.yLimMin),(self.xLimMin,self.yLimMin-200),(self.xLimMin,self.yLimMin),(self.xLimMin+200,self.yLimMin))) # draw lines
+                self.dc.DrawLines(((self.xLimMax,self.yLimMax),(self.xLimMax,self.yLimMax+200),(self.xLimMax,self.yLimMax),(self.xLimMax-200,self.yLimMax))) # draw lines
+            except:
+                self.dc.DrawLines(((self.xLimMin,self.yLimMin),(self.xLimMin,self.yLimMin-200),(self.xLimMin,self.yLimMin),(self.xLimMin+200,self.yLimMin))) # draw lines
+            self.dc.SelectObject(wx.NullBitmap) # release the bmpmap
+            self.bmp = wx.StaticBitmap(self.panel,0,self.bmpmap) #send to the bmp
+            self.bmp.SetCursor(wx.StockCursor(wx.CURSOR_CROSS)) 
+                      
+
             
     def OnRightDown(self, event):
         """right mouse button is pressed"""
@@ -67,6 +113,24 @@ class FigFrame(wx.Frame):
             self.SetTitle('RightMouse. Set Lim: ' + str(pt[0])+',' +str(self.NewH-pt[1]))
             self.parent.labelgetxmax.SetValue(str(pt[0]))
             self.parent.labelgetymax.SetValue(str(self.NewH-pt[1])) 
+            
+            self.bmpmap = wx.BitmapFromImage(self.img) # get a bmpmap
+            self.dc = wx.MemoryDC() # create a dc
+            self.dc.SelectObject(self.bmpmap) # select the object
+            self.dc.SetPen(wx.Pen(wx.RED, 3))
+            self.xLimMax= pt[0]
+            self.yLimMax = pt[1]
+            try:
+                self.xLimMin
+                self.yLimMin
+                self.dc.DrawLines(((self.xLimMin,self.yLimMin),(self.xLimMin,self.yLimMin-200),(self.xLimMin,self.yLimMin),(self.xLimMin+200,self.yLimMin))) # draw lines
+                self.dc.DrawLines(((self.xLimMax,self.yLimMax),(self.xLimMax,self.yLimMax+200),(self.xLimMax,self.yLimMax),(self.xLimMax-200,self.yLimMax))) # draw lines
+            except:
+                self.dc.DrawLines(((self.xLimMax,self.yLimMax),(self.xLimMax,self.yLimMax+200),(self.xLimMax,self.yLimMax),(self.xLimMax-200,self.yLimMax))) # draw lines
+
+            self.dc.SelectObject(wx.NullBitmap) # release the bmpmap
+            self.bmp = wx.StaticBitmap(self.panel,0,self.bmpmap) #send to the bmp
+            self.bmp.SetCursor(wx.StockCursor(wx.CURSOR_CROSS)) 
     
     def calculate(self,x,y):
         xpmin = float(self.parent.labelgetxmin.GetValue())
@@ -79,10 +143,26 @@ class FigFrame(wx.Frame):
         yvmin = float(self.parent.txtctrlymin.GetValue())
         yvmax = float(self.parent.txtctrlymax.GetValue())
         
-        xres = xvmin+1.0*(x-xpmin)/(xpmax-xpmin)*(xvmax-xvmin)
-        yres = yvmin+1.0*(y-ypmin)/(ypmax-ypmin)*(yvmax-yvmin) 
-        print '(xres, yres): ('+str(xres)+','+str(yres)+')\n' 
-        return (xres,yres)
+        self.xres = xvmin+1.0*(x-xpmin)/(xpmax-xpmin)*(xvmax-xvmin)
+        self.yres = yvmin+1.0*(y-ypmin)/(ypmax-ypmin)*(yvmax-yvmin) 
+        #print '(xres, yres): ('+str(self.xres)+','+str(self.yres)+')\n' 
+        return (self.xres,self.yres)
+        
+    def contercalculate(self,x,y):
+        xpmin = float(self.parent.labelgetxmin.GetValue())
+        xpmax = float(self.parent.labelgetxmax.GetValue())
+        ypmin = float(self.parent.labelgetymin.GetValue())
+        ypmax = float(self.parent.labelgetymax.GetValue())
+        
+        xvmin = float(self.parent.txtctrlxmin.GetValue())
+        xvmax = float(self.parent.txtctrlxmax.GetValue())
+        yvmin = float(self.parent.txtctrlymin.GetValue())
+        yvmax = float(self.parent.txtctrlymax.GetValue())
+        
+        self.xresp = int(1.0*(x-xvmin)*(xpmax-xpmin)/(xvmax-xvmin)+xpmin)
+        self.yresp = int(1.0*(y-yvmin)*(ypmax-ypmin)/(yvmax-yvmin)+ypmin)
+
+        return (self.xresp,self.yresp)
 
 class MainFrame(wx.Frame):
     def __init__(self,*args, **kwds):
