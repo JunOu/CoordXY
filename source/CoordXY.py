@@ -48,7 +48,19 @@ class FigFrame(wx.Frame):
             print 'original coordinate: '+str(pt)
             self.SetTitle('LeftMouse. Read Data: ' + str(pt[0])+',' +str(self.NewH-pt[1]))
             xout,yout = self.calculate(pt[0],(self.NewH-pt[1]))
-            self.parent.txtctrlPnt.write('['+str(xout)+','+str(yout)+'],\n')
+            self.dl1 = self.parent.txtctrldl1.GetValue()
+            self.dl2 = self.parent.txtctrldl2.GetValue()
+            self.dl3 = self.parent.txtctrldl3.GetValue()
+            if self.dl1=='':
+                self.dl1=' '
+            if self.dl2=='':
+                self.dl2=' '
+            if self.dl3=='':
+                self.dl3=' '
+            
+            self.parent.txtctrlPnt.write(self.dl1+str(xout)+self.dl2+str(yout)+self.dl3+'\n')
+            
+            print self.dl1,self.dl2,self.dl3
             
             self.bmpmap = wx.BitmapFromImage(self.img) # get a bmpmap
             self.dc = wx.MemoryDC() # create a dc
@@ -61,9 +73,14 @@ class FigFrame(wx.Frame):
             self.datax = []
             self.datay = []
             self.datalines = self.parent.txtctrlPnt.GetNumberOfLines()
+            
             for i in range(self.datalines-1): #-1 since there is a line in the end with nothing
                 self.strtmp = self.parent.txtctrlPnt.GetLineText(i)
-                self.strsplit = re.split(r'\[|\]|,',str(self.strtmp)) # split the str and save to 2 arrays
+                self.strtmp = self.strtmp.replace(self.dl1,',')
+                self.strtmp = self.strtmp.replace(self.dl2,',')
+                self.strtmp = self.strtmp.replace(self.dl3,',')
+                self.strsplit = re.split(',',str(self.strtmp)) # split the str and save to 2 arrays
+                #if self.dl1=''
                 self.datax.append(self.strsplit[1])
                 self.datay.append(self.strsplit[2])
 
@@ -107,7 +124,7 @@ class FigFrame(wx.Frame):
             print 'original coordinate: '+str(pt)
             self.SetTitle('RightMouse. Read Data: ' + str(pt[0])+',' +str(self.NewH-pt[1]))
             xout,yout = self.calculate(pt[0],(self.NewH-pt[1]))
-            self.parent.txtctrlPnt.write('['+str(xout)+','+str(yout)+'],\n')
+            self.parent.txtctrlPnt.write(self.parent.txtctrldl1.GetValue()+str(xout)+self.parent.txtctrldl2.GetValue()+str(yout)+self.parent.txtctrldl3.GetValue()+'\n')
         elif self.parent.rdbtmlim.GetValue()==True:
             print 'original coordinate: '+str(pt)
             self.SetTitle('RightMouse. Set Lim: ' + str(pt[0])+',' +str(self.NewH-pt[1]))
@@ -196,8 +213,19 @@ class MainFrame(wx.Frame):
         self.rdbtmdata = wx.RadioButton(self,-1,'Read Data')
         self.txtctrlPnt = wx.TextCtrl(self,-1, style = wx.TE_MULTILINE)
         
+        self.txtctrldl1 = wx.TextCtrl(self,-1,'[')
+        self.txtctrldl2 = wx.TextCtrl(self,-1,',')
+        self.txtctrldl3 = wx.TextCtrl(self,-1,'],')
+        
+        self.btnClear = wx.Button(self,-1,'Clear')
+        self.btnQuit = wx.Button(self,-1,'Quit')
+        self.btnSave = wx.Button(self,-1,'Save')
+        
         # bind event
         self.Bind(wx.EVT_BUTTON, self.hdlOpenFig, self.btnOpenFig)
+        self.Bind(wx.EVT_BUTTON, self.hdlClear, self.btnClear)
+        self.Bind(wx.EVT_BUTTON, self.hdlQuit, self.btnQuit)
+        self.Bind(wx.EVT_BUTTON, self.hdlSave, self.btnSave)
         
         self.__layout()
  
@@ -245,12 +273,19 @@ class MainFrame(wx.Frame):
          sizerPnt.Add(sizerRadBtn, 0, wx.LEFT)
          sizerPnt.Add(self.txtctrlPnt,1,wx.EXPAND)
          sizer0.Add(sizerPnt,1,wx.EXPAND)
-         
-
+        
+         sizerSet = wx.BoxSizer(wx.HORIZONTAL)
+         sizerSet.Add(self.txtctrldl1,1,wx.EXPAND)
+         sizerSet.Add(self.txtctrldl2,1,wx.EXPAND)
+         sizerSet.Add(self.txtctrldl3,1,wx.EXPAND)
+         sizerSet.Add(self.btnClear,0,wx.EXPAND)
+         sizerSet.Add(self.btnSave,0,wx.EXPAND)
+         sizerSet.Add(self.btnQuit,0,wx.EXPAND)
+         sizer0.Add(sizerSet,0,wx.EXPAND)
          
     def hdlOpenFig(self,event):
         """   Browse for file         """
-        wildcard = "pictures (*.jpeg,*.png)|*.jpeg;*.png"
+        wildcard = "pictures (*.jpeg,*.png,*.jpg)|*.jpeg;*.png;*.jpg | All files (*.*)|*.*"
         dialog = wx.FileDialog(None, "Choose a file",
                                wildcard=wildcard,
                                style=wx.OPEN)
@@ -262,6 +297,22 @@ class MainFrame(wx.Frame):
         else:
             pass
     
+    def hdlClear(self,event):
+        self.txtctrlPnt.Clear()
+        
+    def hdlSave(self,event):
+        wildcard = "Text files (*.txt)|*.txt |Data files (*.dat)| *.dat | All files (*.*)|*.*"
+        self.saveDialog = wx.FileDialog(None, "Choose a file",
+                               wildcard=wildcard,
+                               style=wx.SAVE)
+        if self.saveDialog.ShowModal() == wx.ID_OK:
+            self.txtctrlPnt.GetValue().SaveFile()
+            self.saveDialog.Destroy(self.saveDialog.GetPath()) 
+        else:
+            pass
+    def hdlQuit(self,event):
+        self.Destroy()
+        
 if __name__=='__main__':
     app = wx.PySimpleApp()
     frame = MainFrame()
